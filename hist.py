@@ -94,12 +94,15 @@ def main():
 	output_number = 8									# Number to be considered for the simulation output files
 	species_number = 15 								# Total number of dust species
 	p_bumps = 1 										# Number of dust traps to be considered
+	r_in = 0.4
+	r_out = 2.5
+	Ny = 128
 
 	r, phi, sigma, vel, energy = load_dust_outputs(path, species_number, output_number)
 	gas_sig, gas_vel, gas_energy = load_gas_outputs(r, phi, path, output_number)
 
 	# Determining location of dust traps
-	dt = get_dust_trap(sigma, pic_path, species_number, p_bumps=p_bumps)
+	dt = get_dust_trap(sigma, pic_path, species_number, r_in, r_out, Ny, p_bumps=p_bumps)
 
 	# Clear the radial surface density plot
 	plt.clf()
