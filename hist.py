@@ -73,6 +73,8 @@ def vel_contour(vdiffs, dt, n_species, path):
 	colorinterpolation = 50
 	colourMap = plt.cm.jet
 
+	fig = plt.figure()
+
 	# Plotting the contour plot on a log-log scale
 	plt.xscale('log')
 	plt.yscale('log')

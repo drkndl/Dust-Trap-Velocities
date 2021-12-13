@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import os 
 from scipy.signal import argrelextrema
-
+import argparse
 
 
 def load_dust_outputs(path, n_species, n_out):
@@ -386,16 +386,30 @@ def plot_vdiff(vdiff, n_species, dts, path):
 	plt.show()
 
 
+
 def main():
 
-	path = "../fargo3d/outputs/fargo_multifluid/" 		# Path of simulation output files
-	pic_path = "temp_pics/" 							# Path where the plots are to be saved
-	output_number = 7 									# Number to be considered for the simulation output files
-	species_number = 15 								# Total number of dust species					
-	p_bumps = 1 										# Number of dust traps to be considered
-	rin = 0.4 											# Inner simulation radius
-	rout = 2.5 											# Outer simulation radius
-	Ny = 128 											# Number of radial zones 
+	parser = argparse.ArgumentParser(description = 'Calculates the relative velocities of gas and dust in the dust trap of a protodisk')
+
+	parser.add_argument("-p", "--path", help = "Path of the simulation output files", default = "../fargo3d/outputs/fargo_multifluid/")
+	parser.add_argument("-pp", "--pic_path", help = "Path where the plots are to be saved", default = "temp_pics/")
+	parser.add_argument("-o", "--output", help = "Number to be considered for the simulation output files", default = 7)
+	parser.add_argument("-s", "--species", help = "Total number of dust species", default = 15)
+	parser.add_argument("-b", "--p_bumps", help = "Number of dust traps to be considered", default = 1)
+	parser.add_argument("--rin", help = "Inner simulation radius", default = 0.4)
+	parser.add_argument("--rout", help = "Outer simulation radius", default = 2.5)
+	parser.add_argument("--ny", help = "Number of radial zones", default = 128)
+
+	args = parser.parse_args()
+
+	path = args.path 
+	pic_path = args.pic_path
+	output_number = args.output 
+	species_number = args.species 
+	p_bumps = args.p_bumps 
+	rin = args.rin 
+	rout = args.rout 
+	Ny = args.ny 
 	
 	# List where the relative velocities of all the species is saved for plotting
 	vdiffs = []
