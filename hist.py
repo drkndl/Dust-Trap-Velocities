@@ -99,7 +99,7 @@ def main():
 	# Determining location of dust traps
 	dt = get_dust_trap(sigma, pic_path, species_number, p_bumps=p_bumps)
 
-	# Clear the surface density plot for the histogram and velocity contours
+	# Clear the radial surface density plot
 	plt.clf()
 
 	# Obtaining velocity differences at each dust ring

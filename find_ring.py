@@ -94,7 +94,7 @@ def load_gas_outputs(r, phi, path, n_out):
 
 
 
-def get_dust_trap(sigm, pic_path, n_species, p_bumps=1):
+def get_dust_trap(sigm, pic_path, n_species, r_in, r_out, Ny, p_bumps=1):
 	"""
 	This function plots the average surface density radially for each dust species. The points of maxima are considered as the dust trapped regions. These points is returned. The number of dust traps are determined by the manually input number p_bumps.
 	
@@ -103,6 +103,9 @@ def get_dust_trap(sigm, pic_path, n_species, p_bumps=1):
 	sigm:		3-D list of the 2 dimensional surface densities of the various species
 	pic_path:	output directory of the radial plot of average surface density
 	n_species:	the total number of dust species called for no reason but to create the satisfying colour coordinated plots 
+	r_in: 		inner simulation radius (float)
+	r_out: 		outer simulation radius (float)
+	Ny: 		number of radial zones (int)
 	p_bumps:	number of dust trapped regions to be considered (integer). Default is 1.
 
 	Returns the radial indices of the dust trapped regions.
@@ -143,8 +146,13 @@ def get_dust_trap(sigm, pic_path, n_species, p_bumps=1):
 		plt.axvline(dt[i]-5, linestyle='--', color='black', alpha=0.5)
 		plt.axvline(dt[i]+5, linestyle='--', color='black', alpha=0.5)
 
+	# Changing the x-axis tick labels from Ny to radius as it is more physical 
+	positions = np.around(np.linspace(0, Ny, 10), decimals = 1)
+	labels = np.around(np.linspace(r_in, r_out, 10), decimals = 1)
+	plt.xticks(positions, labels)
+
 	plt.title("Radial distribution of surface density of the disk")
-	plt.xlabel("Radius (Ny)")
+	plt.xlabel("Radius (AU)")
 	plt.ylabel("Surface density ($kg/m^2$)")
 	plt.legend(bbox_to_anchor=(1, 1), fancybox=True, shadow=True)
 	plt.savefig(pic_path+"surf_dens.png", bbox_inches='tight')
@@ -169,11 +177,9 @@ def cell_volume(r, phi, dt):
 	"""
 
 	r_m, phi_m = np.meshgrid(r, phi)		# Their shape is (385, 129)
-
 	vol = np.pi*(r_m[:, dt+1]**2 - r_m[:, dt]**2)
 
 	# vol is an array of areas around the ring. Each element in the array corresponds to the area in each of the 385 azimuthal cells Since the volume here is azimuthally symmetric, I consider the volume of every cell to be the same and therefore take the first cell.
-
 	return vol[0]
 
 
@@ -242,7 +248,7 @@ def vdiff_wavg(ring_vs, ring_sigma, cell_vol, thick=True):
 	ring_vs:	velocities of the dust species in the dust trapped region (3-D list for thick ring, 2-D list for thin ring)
 	ring_sigma:	surface densities of the dust species in the dust ring (3-D list for thick ring, 2-D list for thin ring)
 	cell_vol:	cell volume at the dust trapped region (float number)
-	thick:		toggles thick or thin ring (Boolean). A thick ring considers 5 radial indices on either side in the region 					surrounding the pressure maxima. A thin ring (thick=False) considers only the radial index of pressure maxima. 				By default, thick=True. NEEDS TO BE THE SAME AS VALUE FOR get_ring_param.
+	thick:		toggles thick or thin ring (Boolean). A thick ring considers 5 radial indices on either side in the region 					surrounding the pressure maxima. A thin ring (thick=False) considers only the radial index of pressure maxima. By default, thick=True. NEEDS TO BE THE SAME AS VALUE FOR get_ring_param.
 
 	Returns v_wavg, a 1-D list of velocity differences for the various sets of dust species e.g (1,2), (1,3), (8, 10) etc
 	"""		
@@ -250,18 +256,14 @@ def vdiff_wavg(ring_vs, ring_sigma, cell_vol, thick=True):
 	v_wavg = []
 
 	for i in range(len(ring_vs)):
-
 		for j in range(i+1, len(ring_vs)):
-
 			if thick:
 
 				int_upper = (abs(ring_vs[i] - ring_vs[j]) * ring_sigma[i][:, :-1] * ring_sigma[j][:, :-1] * cell_vol).sum()
 				int_lower = (ring_sigma[i][:, :-1] * ring_sigma[j][:, :-1] * cell_vol).sum()
 
 				wavg = int_upper/int_lower
-			
 				print(f"V{i+1}_{j+1} = {round(wavg, 3)} m/s")
-
 				v_wavg.append(wavg)
 
 			else:
@@ -270,30 +272,43 @@ def vdiff_wavg(ring_vs, ring_sigma, cell_vol, thick=True):
 				int_lower = (ring_sigma[i][:-1] * ring_sigma[j][:-1] * cell_vol).sum()
 
 				wavg = int_upper/int_lower
-				
 				print(f"V{i+1}_{j+1} = {round(wavg, 3)} m/s")
-
 				v_wavg.append(wavg)
 
 	return v_wavg
 
 
 def vdiff_gas(ring_vs, ring_sigma, ring_gasv, ring_gassig, cell_vol, n_species, dt, path, thick=True):
+	"""
+	This function calculates the relative velocities between the various dust species and the gas in the dust traps.
+
+	Parameters:
+
+	ring_vs:		velocities of the dust species in the dust trapped region (3-D list for thick ring, 2-D list for thin ring)
+	ring_sigma:		surface densities of the dust species in the dust ring (3-D list for thick ring, 2-D list for thin ring)
+	ring_gasv:		velocity of the gas in the dust trapped region (1-D list)
+	ring_gassig:	surface density of the gas in the dust trap (1-D list)
+	cell_vol: 		simulation cell volume (float)
+	n_species: 		total number of dust species (int)
+	dt: 			locations of the dust traps (1-D list)
+	path: 			path where the plot is to be saved 
+	thick: 			toggles thick of thin ring (Boolean). By default, thick=True.
+
+	Returns the velocity differences between the gas and the various dust species and plots these values
+	"""
 
 	gasdiff = []
 	print("\n \n")
 
+	# Calculating the velocity differences
 	for i in range(len(ring_vs)):
-
 		if thick:
 
 			int_upper = (abs(ring_vs[i] - ring_gasv) * ring_sigma[i][:, :-1] * ring_gassig[0][:, :-1] * cell_vol).sum()
 			int_lower = (ring_sigma[i][:, :-1] * ring_gassig[0][:, :-1] * cell_vol).sum()
 
 			wavg = int_upper/int_lower
-
 			print(f"V{i+1}_gas = {round(wavg, 3)} m/s")
-
 			gasdiff.append(wavg)
 
 		else:
@@ -302,31 +317,27 @@ def vdiff_gas(ring_vs, ring_sigma, ring_gasv, ring_gassig, cell_vol, n_species, 
 			int_lower = (ring_sigma[i][:-1] * ring_gassig[:][:-1] * cell_vol).sum()
 
 			wavg = int_upper/int_lower
-
 			print(f"V{i+1}_gas = {round(wavg, 3)} m/s")
-
 			gasdiff.append(wavg)
 
-	# Plotting the velocity differences
+	# Defining the labels for the x-axis of the plot as [dust_species_number, gas]
 	labels = []
-
 	for i in range(n_species):
-
 		labels.append([i+1, "gas"])
 
-	# plt.figure(figsize=(15, 6))
-
+	# Adding the labels to the plot
 	x = range(len(gasdiff))
 	plt.xticks(x, labels, rotation=60)
+
+	# Plotting the velocity differences
 	plt.plot(x, gasdiff, marker='o', label=f"Dust trap at {dt}")
 	plt.title(f"Velocity differences between gas and the dust species")
 	plt.xlabel("Species")
 	plt.ylabel("Velocity (m/s)")
-	# plt.grid()
 	plt.legend()
 	plt.tight_layout()
 	plt.savefig(path+f"veldiff_gas_{dt}.png")
-	# plt.show()
+	plt.show()
 
 	return gasdiff 
 
@@ -347,21 +358,26 @@ def plot_vdiff(vdiff, n_species, dts, path):
 
 	labels = []
 
+	# Creating the labels for the x-axis of the plot, depicting between which two species the relative velocity corresponds to
 	for i in range(n_species):
-
 		for j in range(i+1, n_species):
 
 			labels.append(f"{i+1}-{j+1}")
 
+	# Defining the figure
 	plt.figure(figsize=(25, 10))
 
+	# Adding the labels to the plot
 	x = range(len(vdiff[0]))
 	plt.xticks(x, labels, rotation=60)
+
+	# Plotting the relative velocities for each dust trap
 	for i in range(len(vdiff)):
 		plt.plot(x, vdiff[i], marker='o', label=f"Dust trap at {dts[i]}")
 		plt.title(f"Velocity differences for {n_species} species")
 		plt.xlabel("Species")
 		plt.ylabel("Velocity (m/s)")
+
 	plt.grid()
 	plt.legend()
 	plt.xticks(fontsize=6)
@@ -370,40 +386,45 @@ def plot_vdiff(vdiff, n_species, dts, path):
 	plt.show()
 
 
+def main():
 
-#------------------------------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------------------------------		
-
-if __name__ == "__main__":
-
-	path = "../fargo3d/outputs/fargo_multifluid/"
-	pic_path = "temp_pics/"
-	output_number = 7
-	species_number = 15
-	p_bumps = 1
+	path = "../fargo3d/outputs/fargo_multifluid/" 		# Path of simulation output files
+	pic_path = "temp_pics/" 							# Path where the plots are to be saved
+	output_number = 7 									# Number to be considered for the simulation output files
+	species_number = 15 								# Total number of dust species					
+	p_bumps = 1 										# Number of dust traps to be considered
+	rin = 0.4 											# Inner simulation radius
+	rout = 2.5 											# Outer simulation radius
+	Ny = 128 											# Number of radial zones 
+	
+	# List where the relative velocities of all the species is saved for plotting
 	vdiffs = []
 
 	r, phi, sigma, vel, energy = load_dust_outputs(path, species_number, output_number)
 	gas_sig, gas_vel, gas_energy = load_gas_outputs(r, phi, path, output_number)
 
-	dt = get_dust_trap(sigma, pic_path, species_number, p_bumps=p_bumps)
+	# Getting the list of dust traps
+	dt = get_dust_trap(sigma, pic_path, species_number, rin, rout, Ny, p_bumps=p_bumps)
+
+	# Clear the radial surface density plot
 	plt.clf()
 
 	# Obtaining velocity differences at each dust trapped region
-
 	for i in range(len(dt)):
 
 		volume = cell_volume(r, phi, dt[i])
-
 		v_ring, sigma_ring, vgas_ring, sigmagas_ring = get_ring_param(sigma, vel, gas_sig, gas_vel, dt[i])
-
 		vdiffs.append(vdiff_wavg(v_ring, sigma_ring, volume))
 		gasdiffs = vdiff_gas(v_ring, sigma_ring, vgas_ring, sigmagas_ring, volume, species_number, dt[i], pic_path)
 
 		print(f"Average velocity difference for dust trapped region at {dt[i]} : {np.average(vdiffs)}")
 		print(f"Average velocity difference between gas and dust at {dt[i]} : {np.average(gasdiffs)}")
 
-	plot_vdiff(vdiffs, species_number, dt, pic_path)
+	plot_vdiff(vdiffs, species_number, dt, pic_path)	
+
+if __name__ == "__main__":
+
+	main()
 
 	
 
